@@ -1,25 +1,30 @@
-from flask import Flask
-from flask_httpauth import HTTPTokenAuth
-
-auth = HTTPTokenAuth(scheme='Bearer')
-tokens = {
-    "58fddba0-ed80-42da-b276-7b3144c2374d": "john",
-    "ea1832e0-2548-400d-97a1-b8cc88fb0475": "susan"
-}
-
-
-@auth.verify_token
-def verify_token(token):
-    if token in tokens:
-        return tokens[token]
+from flask import Flask, jsonify, request
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager
+from http import HTTPStatus
 
 
 def create_app():
     app = Flask(__name__)
+    app.config["JWT_SECRET_KEY"] = "Kenzi3"
+    jwt = JWTManager(app)
 
-    @app.get('/')
-    @auth.login_required
-    def index():
-        return f"Hello, {auth.current_user()}!"
+    @app.post("/auth")
+    def login():
+        username = request.json.get("username", None)
+        password = request.json.get("password", None)
+
+        if username != "test" or password != "test":
+            return jsonify({"msg": "Bad username or password"}), HTTPStatus.UNAUTHORIZED
+
+        access_token = create_access_token(identity=username)
+
+        return jsonify(access_token=access_token)
+
+    @app.get("/protected")
+    @jwt_required()
+    def protected():
+        current_user = get_jwt_identity()
+
+        return jsonify(logged_in_as=current_user), HTTPStatus.OK
 
     return app
